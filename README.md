@@ -54,39 +54,40 @@ En esta fase se diseña la arquitectura para el procesamiento distribuido de los
 ```mermaid
 graph TB
     %% Nodos y conexiones de la arquitectura distribuida
-    D[dataset_distribuido.csv\n(50,000 registros)]
+    D["dataset_distribuido.csv\n(50,000 registros)"]
     class D source
     
-    C[Coordinador Principal]
+    C["Coordinador Principal"]
     class C coordinator
     D --> C
     
     %% Mecanismo de particionamiento
-    C_part[PARTITIONING\nN bloques equilibrados]
+    C_part["PARTITIONING\nN bloques equilibrados"]
     C --> C_part
     
-    C1[Bloque 1\nWorker 1]
-    C2[Bloque 2\nWorker 2]
-    C3[Bloque 3\nWorker 3]
-    C4[Bloque 4\nWorker 4]
-    class C1 C2 C3 C4 processor
+    C1["Bloque 1\nWorker 1"]
+    C2["Bloque 2\nWorker 2"]
+    C3["Bloque 3\nWorker 3"]
+    C4["Bloque 4\nWorker 4"]
+    class C1,C2,C3,C4 processor
     C_part --> C1
     C_part --> C2
     C_part --> C3
     C_part --> C4
     
     %% Nodos de procesamiento paralelo
-    W1[Worker 1\nProcesamiento Independiente]
-    W2[Worker 2\nProcesamiento Independiente]
-    W3[Worker 3\nProcesamiento Independiente]
-    W4[Worker 4\nProcesamiento Independiente]
-    class W1 W2 W3 W4 processor
-    W1 -.->|Partición A| W2
-    W2 -.->|Partición B| W3
-    W3 -.->|Partición C| W4
+    W1["Worker 1\nProcesamiento Independiente"]
+    W2["Worker 2\nProcesamiento Independiente"]
+    W3["Worker 3\nProcesamiento Independiente"]
+    W4["Worker 4\nProcesamiento Independiente"]
+    class W1,W2,W3,W4 processor
+    C1 --> W1
+    C2 --> W2
+    C3 --> W3
+    C4 --> W4
     
     %% Etapa de consolidación (Reduce)
-    R[Consolador Central\nREDUCE]
+    R["Consolidador Central\nREDUCE"]
     class R reducer
     W1 --> R
     W2 --> R
@@ -94,11 +95,11 @@ graph TB
     W4 --> R
     
     %% Generación de reportes y visualizaciones
-    G1[CSV Consolidado]
-    G2[JSON Consolidado]
-    G3[Gráficos Categoría]
-    G4[Gráficos Región]
-    G5[Comparativa Tiempos]
+    G1["CSV Consolidado"]
+    G2["JSON Consolidado"]
+    G3["Gráficos Categoría"]
+    G4["Gráficos Región"]
+    G5["Comparativa Tiempos"]
     R --> G1
     R --> G2
     G1 --> G3
@@ -107,10 +108,16 @@ graph TB
     G4 --> G5
     
     %% Registro de tiempos y speedup
-    M1[Tiempo Lectura (ms)]
-    M2[Speedup Observado]
+    M1["Tiempo Lectura (ms)"]
+    M2["Speedup Observado"]
     G5 --> M1
     G5 --> M2
+
+    %% Estilos de nodos
+    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef coordinator fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef processor fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef reducer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 ```
 
 ### Componentes del Diagrama
