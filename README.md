@@ -54,7 +54,7 @@ En esta fase se diseña la arquitectura para el procesamiento distribuido de los
 ```mermaid
 graph TB
     %% Nodos y conexiones de la arquitectura distribuida
-    D[dataset_distribuido.csv\\n(50,000 registros)]
+    D[dataset_distribuido.csv\n(50,000 registros)]
     class D source
     
     C[Coordinador Principal]
@@ -62,13 +62,13 @@ graph TB
     D --> C
     
     %% Mecanismo de particionamiento
-    C_part[PARTITIONING\\nN bloques equilibrados]
+    C_part[PARTITIONING\nN bloques equilibrados]
     C --> C_part
     
-    C1[Bloque 1\\nWorker 1]
-    C2[Bloque 2\\nWorker 2]
-    C3[Bloque 3\\nWorker 3]
-    C4[Bloque 4\\nWorker 4]
+    C1[Bloque 1\nWorker 1]
+    C2[Bloque 2\nWorker 2]
+    C3[Bloque 3\nWorker 3]
+    C4[Bloque 4\nWorker 4]
     class C1 C2 C3 C4 processor
     C_part --> C1
     C_part --> C2
@@ -76,17 +76,17 @@ graph TB
     C_part --> C4
     
     %% Nodos de procesamiento paralelo
-    W1[Worker 1\\nProcesamiento Independiente]
-    W2[Worker 2\\nProcesamiento Independiente]
-    W3[Worker 3\\nProcesamiento Independiente]
-    W4[Worker 4\\nProcesamiento Independiente]
+    W1[Worker 1\nProcesamiento Independiente]
+    W2[Worker 2\nProcesamiento Independiente]
+    W3[Worker 3\nProcesamiento Independiente]
+    W4[Worker 4\nProcesamiento Independiente]
     class W1 W2 W3 W4 processor
     W1 -.->|Partición A| W2
     W2 -.->|Partición B| W3
     W3 -.->|Partición C| W4
     
     %% Etapa de consolidación (Reduce)
-    R[Consolador Central\\nREDUCE]
+    R[Consolador Central\nREDUCE]
     class R reducer
     W1 --> R
     W2 --> R
