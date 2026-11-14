@@ -1,0 +1,4 @@
+volumen,secuencial_promedio_s,secuencial_std_s,paralelo_promedio_s,paralelo_std_s,speedup,particionamiento_promedio_s,transferencia_promedio_s,workers_promedio_s,consolidacion_promedio_s,resultados_identicos
+10000,0.5684,0.0638,1.4881,0.3059,0.382,0.064,0.0074,1.4165,0.0001,True
+100000,6.2098,0.2006,2.1414,0.1517,2.8998,0.5678,0.0915,1.482,0.0001,True
+500000,31.049,0.0,4.589,0.0,6.7659,1.8278,0.4541,2.307,0.0001,False

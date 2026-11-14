@@ -1,0 +1,10 @@
+{
+  "fecha_ejecucion": "2026-11-14 10:48:07",
+  "sistema_operativo": "Windows",
+  "version_so": "10.0.26300",
+  "release_so": "10",
+  "procesador": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+  "arquitectura": "AMD64",
+  "nucleos_logicos": 16,
+  "python_version": "3.11.9"
+}

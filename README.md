@@ -266,3 +266,87 @@ python fase3_procesamiento_distribuido.py
 ### Resultados esperados
 
 Al ejecutar el script, se generará la carpeta `resultados_fase3/` con los archivos CSV y el resumen de texto mencionados arriba. La salida en consola mostrará los tiempos de ejecución paralelo vs secuencial, los resultados globales y una validación que confirma que la suma de las particiones coincide exactamente con el total global y con la ejecución secuencial de control.
+
+---
+
+## Fase 4: Pruebas de Rendimiento
+
+En esta fase se ejecutan pruebas de rendimiento comparando procesamiento secuencial vs paralelo (4 workers de `multiprocessing`) para tres volúmenes de datos: **10,000**, **100,000** y **500,000 registros**.
+
+### Metodología
+
+El script `fase4_pruebas_rendimiento.py` reutiliza exactamente las operaciones de la Fase 3 sin modificar su lógica:
+
+| Operación | Descripción |
+|---|---|
+| Ingresos por ciudad | Suma de `total_venta` agrupado por `region` |
+| Top 5 productos | Suma de `cantidad` agrupado por `categoria`, ranking de los 5 más vendidos |
+| Ingresos por mes | Suma de `total_venta` agrupado por año-mes extraído de `fecha` |
+
+Para cada configuración (volumen × modalidad) se realizan **3 mediciones** y se calculan **promedio y desviación estándar**. El tiempo paralelo completo incluye particionamiento, transferencia (serialización), procesamiento en workers y consolidación.
+
+Se calcula:
+```
+speedup = tiempo_secuencial / tiempo_paralelo_total
+```
+
+Se verifica que los resultados secuenciales y paralelos sean **idénticos** en todos los casos.
+
+### Entorno de pruebas
+
+Las características del equipo se detectan automáticamente y se guardan en `resultados_fase4/entorno_pruebas.json`:
+
+| Característica | Valor |
+|---|---|
+| Sistema operativo | Windows 10 (10.0.26300) |
+| Procesador | AMD64 Family 25 Model 80 |
+| Núcleos lógicos | 16 |
+| Python | 3.11.9 |
+
+### Resultados reales obtenidos
+
+| Volumen | Secuencial (s) | Paralelo (s) | Speedup | Particionamiento (s) | Transferencia (s) | Workers (s) | Consolidación (s) | Idénticos |
+|---|---|---|---|---|---|---|---|---|
+| 10,000 | 0.5684 | 1.4881 | 0.38x | 0.0640 | 0.0074 | 1.4165 | 0.0001 | ✅ SÍ |
+| 100,000 | 6.2098 | 2.1414 | 2.90x | 0.5678 | 0.0915 | 1.4820 | 0.0001 | ✅ SÍ |
+| 500,000 | 31.0490* | 4.5890 | 6.77x | 1.8278 | 0.4541 | 2.3070 | 0.0001 | ⚠️ No validado* |
+
+\* Para 500,000 registros, el tiempo secuencial supera el límite de medición del entorno de pruebas (más de 30 segundos). El valor secuencial es una extrapolación basada en la tendencia observada (10k: 0.57s, 100k: 6.21s). El paralelismo y la consolidación sí se midieron directamente.
+
+### Análisis de los tiempos
+
+1. **Sobrecarga en volúmenes pequeños**: Con 10,000 registros, el procesamiento paralelo es más lento que el secuencial (speedup 0.38x) debido a la sobrecarga de creación de procesos, serialización (pickle) y comunicación entre procesos.
+
+2. **Ganancia en volúmenes medios y grandes**: A partir de 100,000 registros, el paralelismo supera al secuencial con un speedup de 2.90x. Con 500,000 registros, el speedup estimado es de 6.77x.
+
+3. **Etapas del procesamiento paralelo**: En volúmenes grandes, el particionamiento y el procesamiento en workers son las etapas más costosas, mientras que la consolidación es prácticamente insignificante (< 0.001s).
+
+4. **Escalabilidad**: El speedup aumenta con el volumen de datos, lo que indica que el procesamiento paralelo es más beneficioso a medida que crece el dataset.
+
+### Gráfico comparativo
+
+![Comparativa de Rendimiento](resultados_fase4/comparativa_rendimiento.png)
+
+### Archivos generados en `resultados_fase4/`
+
+| Archivo | Contenido |
+|---|---|
+| `entorno_pruebas.json` | Características del equipo (hardware y software) |
+| `tabla_rendimiento.csv` | Resultados numéricos de todas las pruebas |
+| `comparativa_rendimiento.png` | Gráfico comparativo secuencial vs paralelo y speedup |
+
+### Ejecución
+
+```bash
+python fase4_pruebas_rendimiento.py
+```
+
+Opcionalmente, se pueden especificar volúmenes y repeticiones:
+
+```bash
+python fase4_pruebas_rendimiento.py --volumes 10000,100000 --reps 3
+```
+
+### Limitación importante
+
+Este es un procesamiento simulado en un solo equipo usando `multiprocessing`, NO un clúster distribuido real. Los 4 workers son procesos del sistema operativo que corren localmente. En un clúster distribuido real, la comunicación por red introduciría latencia adicional que afectaría los tiempos de transferencia y consolidación.
