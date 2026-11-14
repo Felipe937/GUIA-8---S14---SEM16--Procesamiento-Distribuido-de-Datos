@@ -1,0 +1,53 @@
+======================================================================
+RESUMEN DE EJECUCIÓN - FASE 3 (Procesamiento Distribuido Simulado)
+======================================================================
+
+Dataset: D:\Sistemas Distribuidos\GUIA 8 - S14 - SEM16- Procesamiento Distribuido de Datos\data\dataset_distribuido.csv
+Total de registros: 50,000
+Número de workers: 4
+
+--- TIEMPOS DE EJECUCIÓN ---
+  Paralelo (4 workers):  0.9360 segundos
+  Secuencial (control):  2.6798 segundos
+  Speedup observado:     2.86x
+
+--- INGRESOS POR CIUDAD (GLOBAL) ---
+  Occidente: 549,990,862,849.00 COP
+  Cali: 545,832,494,361.00 COP
+  Oriente: 543,745,016,125.00 COP
+  Medellín: 542,978,149,521.00 COP
+  Norte: 541,799,069,457.00 COP
+  Sur: 540,819,272,138.00 COP
+  Bogotá: 540,136,253,280.00 COP
+
+--- TOP 5 PRODUCTOS MÁS VENDIDOS (GLOBAL) ---
+  1. Juegos: 383,885 unidades
+  2. Oficina: 383,859 unidades
+  3. Electrónica: 379,446 unidades
+  4. Alimentos: 378,760 unidades
+  5. Hogar: 377,924 unidades
+
+--- INGRESOS POR MES (GLOBAL) ---
+  2024-01: 309,958,668,936.00 COP
+  2024-02: 318,332,594,995.00 COP
+  2024-03: 325,062,510,144.00 COP
+  2024-04: 320,996,096,954.00 COP
+  2024-05: 324,199,317,233.00 COP
+  2024-06: 313,003,762,944.00 COP
+  2024-07: 316,508,457,203.00 COP
+  2024-08: 318,163,829,658.00 COP
+  2024-09: 314,342,624,701.00 COP
+  2024-10: 318,073,325,790.00 COP
+  2024-11: 321,344,733,012.00 COP
+  2024-12: 305,315,196,161.00 COP
+
+--- VALIDACIÓN ---
+  Suma de particiones == Total global (región):  SÍ
+  Top 5 productos == Secuencial:                 SÍ
+  Suma de particiones == Total global (mes):     SÍ
+  Global == Secuencial (región):                 SÍ
+  Global == Secuencial (mes):                    SÍ
+
+NOTA: Este es un procesamiento simulado en un solo equipo con
+procesos independientes (multiprocessing), NO un clúster distribuido real.
+======================================================================

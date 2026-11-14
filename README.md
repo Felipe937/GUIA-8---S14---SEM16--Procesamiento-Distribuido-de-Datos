@@ -189,3 +189,73 @@ Al ejecutar el script, se generará una carpeta `resultados_fase3/` con los arch
 #### Nota sobre la simulación:
 
 Este proceso se ejecuta en un solo equipo usando `multiprocessing` para simular nodos independientes. En un clúster distribuido real (como Spark, Hadoop, o MPI), los workers se ejecutarían en máquinas diferentes y la comunicación se realizaría a través de red. El enfoque y los resultados serían conceptualmente equivalentes, pero la sobrecarga de comunicación sería diferente.
+
+---
+
+## Fase 3: Implementación del Procesamiento
+
+En esta fase se implementa el procesamiento distribuido del dataset de 50,000 registros (`data/dataset_distribuido.csv`) utilizando el módulo `multiprocessing` de Python con 4 procesos trabajadores que simulan nodos independientes.
+
+### Alcance y limitación importante
+
+**Esta es una simulación de procesamiento distribuido ejecutada en un solo equipo**, no un clúster distribuido real. Los 4 workers son procesos del sistema operativo que corren localmente y comparten memoria mediante mecanismos de serialización (pickle) de `multiprocessing.Pool`. En un entorno productivo real (por ejemplo, Apache Spark, Hadoop MapReduce o MPI), cada worker residiría en una máquina diferente y la comunicación entre nodos se daría por red, introduciendo latencia y sobrecarga de red que no están presentes en esta simulación. Sin embargo, el patrón lógico Map-Reduce (particionar → procesar en paralelo → consolidar) es conceptualmente el mismo.
+
+### Columnas del dataset respetadas
+
+El script lee el archivo `data/dataset_distribuido.csv` generado en la Fase 1 y respeta exactamente sus columnas:
+
+| Columna | Descripción |
+|---|---|
+| `id_transaccion` | Identificador único de la transacción |
+| `fecha` | Fecha de la transacción (formato YYYY-MM-DD, año 2024) |
+| `categoria` | Categoría del producto (Electrónica, Ropa, Alimentos, etc.) |
+| `region` | Región/ciudad colombiana (Bogotá, Medellín, Cali, Norte, Sur, Oriente, Occidente) |
+| `estado` | Estado de la transacción (Pendiente, Completada, Cancelada) |
+| `cantidad` | Cantidad de unidades vendidas |
+| `precio_unitario` | Preio unitario en COP |
+| `total_venta` | Ingreso total de la transacción (cantidad × precio_unitario) |
+| `tiempo_procesamiento_ms` | Tiempo simulado de procesamiento en ms |
+
+### Arquitectura de la implementación (`fase3_procesamiento_distribuido.py`)
+
+El script sigue un enfoque Map-Reduce con 4 procesos trabajadores:
+
+1. **Particionamiento**: El dataset de 50,000 registros se divide en 4 particiones equilibradas de 12,500 registros cada una usando reparto cíclico (`df.iloc[i::4]`).
+
+2. **Procesamiento por trabajador (Map)**: Cada worker recibe su partición y calcula de forma aislada e independiente:
+   - **Total de ingresos por ciudad (región)**: suma de `total_venta` agrupado por `region`.
+   - **Cantidad total vendida por producto**: suma de `cantidad` agrupado por `categoria`.
+   - **Ingresos totales por mes**: suma de `total_venta` agrupado por año-mes extraído de `fecha`.
+
+3. **Consolidación (Reduce)**: El proceso principal recoge los diccionarios parciales de los 4 workers y los unifica para obtener:
+   - Total global de ingresos por ciudad.
+   - Top 5 productos más vendidos por cantidad (a nivel global).
+   - Ingresos totales por mes (a nivel global).
+
+4. **Validación**: Se ejecuta una versión secuencial de control sobre el dataset completo y se comparan los resultados. Se verifica que:
+   - La suma de los parciales de las 4 particiones coincida exactamente con el total global consolidado.
+   - El consolidado global coincida con la ejecución secuencial de control.
+
+### Archivos generados en `resultados_fase3/`
+
+| Archivo | Contenido |
+|---|---|
+| `resultados_por_particion.csv` | Resumen por partición (registros, regiones, productos, meses) |
+| `ingresos_por_region_por_particion.csv` | Ingresos por región desglosado por partición |
+| `productos_por_particion.csv` | Cantidad vendida por producto desglosado por partición |
+| `ingresos_por_mes_por_particion.csv` | Ingresos por mes desglosado por partición |
+| `ingresos_por_ciudad.csv` | Consolidado global: ingresos totales por ciudad (región) |
+| `top_productos.csv` | Consolidado global: Top 5 productos más vendidos por cantidad |
+| `ingresos_por_mes.csv` | Consolidado global: ingresos totales por mes |
+| `validacion_particion_vs_global.csv` | Comparativa suma de particiones vs total global vs secuencial |
+| `resumen_ejecucion.txt` | Resumen legible con tiempos, resultados globales y validación |
+
+### Ejecución
+
+```bash
+python fase3_procesamiento_distribuido.py
+```
+
+### Resultados esperados
+
+Al ejecutar el script, se generará la carpeta `resultados_fase3/` con los archivos CSV y el resumen de texto mencionados arriba. La salida en consola mostrará los tiempos de ejecución paralelo vs secuencial, los resultados globales y una validación que confirma que la suma de las particiones coincide exactamente con el total global y con la ejecución secuencial de control.
