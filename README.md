@@ -140,4 +140,52 @@ Ejecutar: `python src/fase2_generar_diagrama.py`
 - Ejecutar el script de generación de diagrama
 - Verificar la imagen PNG resultante
 - Insertar el diagrama en el documento de entrega
-- Ejecutar el procesamiento distribuido real sobre los 50,000 registros
+- **Ejecutar la Fase 3: `python src/fase3_procesamiento_distribuido.py`**
+- Verificar los resultados en la carpeta `resultados_fase3/`
+
+### Fase 3: Implementación del Procesamiento Distribuido
+
+En esta fase se implementa el procesamiento distribuido del dataset de 50,000 registros utilizando `multiprocessing` en un enfoque Map-Reduce. **Nota importante: Este es un procesamiento simulado en un solo equipo con procesos independientes, no un clúster distribuido real.**
+
+#### Estructura del script `src/fase3_procesamiento_distribuido.py`:
+
+El script implementa las siguientes funcionalidades:
+
+1. **Particionamiento**: Divide el dataset en 4 particiones equilibradas para despacharlas a 4 procesos trabajadores (`Worker 1` a `Worker 4`) usando `multiprocessing.Pool`.
+
+2. **Procesamiento por partición (Map)**: En cada proceso independiente, calcula de forma aislada:
+   - Total de ingresos por región (ciudad): `ingresos_por_region`
+   - Cantidad total vendida por producto (para identificar los 5 productos más vendidos en esa partición): `top_productos`
+   - Ingresos totales por mes (agrupados por año-mes): `ingresos_por_mes`
+
+2. **Consolidación final (Reduce)**: El coordinador recoge los diccionarios parciales de cada worker y los unifica para obtener:
+   - Total global de ingresos por región (ciudad)
+   - Ranking definitivo de los 5 productos con mayor cantidad vendida
+   - Ingresos totales por mes
+
+3. **Comparación y validación**:
+   - Muestra en consola y guarda en la carpeta `resultados_fase3/` los resultados individuales de cada partición y la consolidación final
+   - Incluye una tabla comparativa que contraste los valores parciales de las particiones frente al consolidado final (verificando que la suma de las particiones coincida exactamente con el total global)
+   - Mide y compara los tiempos de ejecución entre el procesamiento paralelo y una ejecución secuencial de control
+
+4. **Resultados guardados en `resultados_fase3/`**:
+   - `resultados_por_particion.json`: Detalle del procesamiento de cada worker
+   - `consolidacion_global.json`: Consolidación completa con totales globales
+   - `resumen_ejecucion.txt`: Reporte legible con los principales resultados y validación
+   - `ingresos_por_ciudad.csv`: Ingresos totales por cada región/ciudad
+   - `top_productos.csv`: Top 5 productos con mayor cantidad vendida
+   - `ingresos_por_mes.csv`: Ingresos totales agrupados por mes
+
+#### Ejecución:
+
+```bash
+python src/fase3_procesamiento_distribuido.py
+```
+
+#### Resultados esperados:
+
+Al ejecutar el script, se generará una carpeta `resultados_fase3/` con los archivos mencionados above. La validación debería mostrar que la suma de las particiones coincide exactamente con el total global, demostrando la corrección del enfoque Map-Reduce en este entorno de simulación.
+
+#### Nota sobre la simulación:
+
+Este proceso se ejecuta en un solo equipo usando `multiprocessing` para simular nodos independientes. En un clúster distribuido real (como Spark, Hadoop, o MPI), los workers se ejecutarían en máquinas diferentes y la comunicación se realizaría a través de red. El enfoque y los resultados serían conceptualmente equivalentes, pero la sobrecarga de comunicación sería diferente.
