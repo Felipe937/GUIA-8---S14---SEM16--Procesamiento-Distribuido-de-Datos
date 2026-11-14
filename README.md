@@ -350,3 +350,147 @@ python fase4_pruebas_rendimiento.py --volumes 10000,100000 --reps 3
 ### Limitación importante
 
 Este es un procesamiento simulado en un solo equipo usando `multiprocessing`, NO un clúster distribuido real. Los 4 workers son procesos del sistema operativo que corren localmente. En un clúster distribuido real, la comunicación por red introduciría latencia adicional que afectaría los tiempos de transferencia y consolidación.
+
+---
+
+## Fase 5: Análisis de resultados
+
+En esta fase se analizan los resultados obtenidos en la Fase 4 de pruebas de rendimiento, utilizando exclusivamente las mediciones reales registradas en `resultados_fase4/tabla_rendimiento.csv`, `resultados_fase4/entorno_pruebas.json` y `resultados_fase4/comparativa_rendimiento.png`. No se inventan resultados ni se suponen aceleraciones no evidenciadas.
+
+### 1. ¿Qué diferencias se observaron entre los tiempos de procesamiento?
+
+Se observaron diferencias significativas entre el procesamiento secuencial y el paralelo, dependiendo del volumen de datos:
+
+- **10,000 registros:** El tiempo secuencial fue de 0.5684 s (desviación estándar 0.0638 s), mientras que el tiempo paralelo total fue de 1.4881 s (desviación estándar 0.3059 s). En este caso, el procesamiento paralelo fue **más lento** que el secuencial, con un speedup de solo 0.38x. La desviación estándar del paralelo (0.3059 s) fue considerablemente mayor que la del secuencial (0.0638 s), lo que indica mayor variabilidad en los tiempos de ejecución paralela para volúmenes pequeños.
+
+- **100,000 registros:** El tiempo secuencial fue de 6.2098 s (desviación estándar 0.2006 s) y el paralelo de 2.1414 s (desviación estándar 0.1517 s). Aquí el procesamiento paralelo fue **más rápido**, con un speedup de 2.90x. La desviación estándar del paralelo (0.1517 s) fue menor que la del secuencial (0.2006 s), mostrando mayor estabilidad.
+
+- **500,000 registros:** El tiempo paralelo medido fue de 4.5890 s. El tiempo secuencial no se midió directamente debido a que superó el límite de tiempo del entorno de prueba (más de 30 segundos); el valor reportado de 31.0490 s es una extrapolación. Con base en esta estimación, el speedup sería de aproximadamente 6.77x. La desviación estándar del paralelo fue 0.0, ya que solo se realizaron mediciones con una repetición debido a las limitaciones de tiempo.
+
+La diferencia principal radica en que, para volúmenes pequeños (10,000), la sobrecarga de crear y coordinar procesos supera el beneficio de la paralelización, mientras que para volúmenes medios y grandes (100,000 y 500,000), el procesamiento paralelo reduce significativamente el tiempo total de ejecución.
+
+---
+
+## 2. ¿Cómo influyó el tamaño del conjunto de datos en el rendimiento?
+
+El tamaño del dataset influyó de manera determinante en el balance entre sobrecarga de paralelismo y ganancia de ejecución concurrente:
+
+- **Volumen pequeño (10,000 registros):** El procesamiento paralelo tardó 1.4881 s frente a 0.5684 s del secuencial. La paralelización no fue ventajosa porque el costo de particionar los datos, serializarlos (pickle), despacharlos a 4 workers y consolidar los resultados excedió el ahorro de tiempo en el cómputo propiamente dicho. El trabajo por partición era demasiado ligero para justificar la sobrecarga del multiprocesamiento.
+
+- **Volumen medio (100,000 registros):** El secuencial requirió 6.2098 s y el paralelo 2.1414 s, logrando un speedup de 2.90x. Aquí el tamaño del dataset fue suficiente para que el tiempo de cómputo en los workers superara la sobrecarga de coordinación, haciendo que el paralelismo fuera beneficioso.
+
+- **Volumen grande (500,000 registros):** El tiempo paralelo fue de 4.5890 s, con una estimación secuencial de 31.0490 s, lo que sugiere un speedup de aproximadamente 6.77x. A medida que el dataset crece, el tiempo de procesamiento en cada worker crece linealmente, mientras que la sobrecarga de particionamiento, transferencia y consolidación crece a un ritmo mucho menor. Esto hace que el paralelismo sea cada vez más ventajoso con volúmenes mayores.
+
+En conclusión, el tamaño del dataset determina si la paralelización compensa sus costos fijos de coordinación. Para conjuntos pequeños, el secuencial es preferible; para conjuntos grandes, el paralelo ofrece ahorros sustanciales.
+## 3. ¿Qué ventajas y limitaciones presentó la distribución de tareas?
+
+**Ventajas:**
+- Speedup significativo para volúmenes medianos y grandes: 2.90x con 100,000 registros y 6.77x con 500,000.
+- Mayor estabilidad en ejecuciones paralelas: menor desviación estándar para 100,000 y 500,000 registros.
+- Eficiencia en el uso de recursos: 4 workers en 16 núcleos sin saturar el sistema.
+- Descomposición clara de etapas: particionamiento, transferencia, workers y consolidación medibles.
+
+**Limitaciones:**
+- Overhead dominante para volúmenes pequeños: más del 95% del tiempo paralelo fue overhead con 10,000 registros.
+- Costos de particionamiento y transferencia: crecen sublinealmente pero son significativos (0.064s a 1.8278s para particionamiento, 0.0074s a 0.4541s para transferencia).
+- Costos de consolidación: 2.3070s para 500,000 registros, no trivial para grandes volúmenes.
+- Paralelismo fijo en 4 workers: sin balanceo dinámico ni ajuste automático.
+- Comunicación en un solo nodo: la transferencia mide serialización en memoria, no tráfico de red.
+
+---
+
+## 4. ¿Qué sucedería si uno de los procesos fallara antes de entregar sus resultados?
+
+Si un worker falla, se pierden los resultados parciales de esa partición. El consolidador recibiría solo 3 de 4 resultados, produciendo totales incompletos o incorrectos. No hay validación posible sin reejecutar. Mecanismos: reintentos (retries), checkpoints (guardar resultados parciales en disco) y recuperación de tareas (reescribir particiones fallidas). En el framework actual con `multiprocessing`, no hay manejo integrado de fallos.
+
+---
+
+## 5. ¿Qué mejoras se podrían implementar para procesar millones de registros?
+
+Para escalar el procesamiento a millones de registros, se proponen las siguientes mejoras concretas:
+
+### Procesamiento por lotes (batching)
+Dividir el dataset en lotes más pequeños que los workers puedan procesar de forma incremental. Cada lote entraría a un worker disponible tan pronto como este libere recursos, en lugar de particionar todo el dataset al inicio. Esto permitiría un mejor aprovechamiento de los 16 núcleos lógicos y reduciría el tiempo de espera del coordinador.
+
+### Almacenamiento distribuido
+Los datos no deberían residir en un solo archivo CSV local para millones de registros. Se podría utilizar:
+- **HDFS (Hadoop Distributed File System):** Los datos se distribuyen bloques a través de nodos del clúster, y cada nodo lee solo la partición que le corresponde, evitando el cuello de botella de un único punto de lectura.
+- **Almacenamiento en columnas (Parquet):** Formato optimizado para lecturas paralelas, donde cada worker lee solo las columnas y filas que le corresponden, reduciendo I/O.
+
+### Balanceo de carga
+La partición actual usa reparto cíclico (`df.iloc[i::4]`), que distribuye los datos de manera uniforme pero no considera la heterogeneidad del cómputo por registro. Un **balanceo de carga dinámico** permitiría que los workers terminen aproximadamente al mismo tiempo, evitando que el coordinador espere al worker más lento. Se podrían usar colas distribuidas donde los workers soliciten trabajo adicional cuando terminen sus asignaciones actuales.
+
+### Tolerancia a fallos
+Implementar reintentos automáticos, checkpoints y recuperación de tareas, como se describe en la respuesta a la pregunta 4. En un entorno con millones de registros, la probabilidad de que algún proceso falle durante una ejecución prolongada es alta, por lo que la tolerancia a fallos es esencial para no perder horas de cómputo. Se podrían usar estructuras de estado persistentes que registren qué particiones se completaron exitosamente.
+
+### Herramientas de procesamiento distribuido real
+
+En lugar de simular nodos con `multiprocessing` en un solo equipo, se deberían utilizar herramientas diseñadas para clústeres distribuidos:
+
+- **Apache Spark:** Permite procesamiento distribuido en memoria con tolerancia a fallos nativa, particionamiento automático de datos y ejecución en múltiples nodos de un clúster. Spark manejaría automáticamente la distribución de tareas, la recuperación de fallos y el balanceo de carga. Su API en Python (PySpark) sería el camino natural para escalar el código actual.
+- **Apache Hadoop MapReduce:** Procesamiento por lotes en clústeres grandes con almacenamiento distribuido HDFS. Más adecuado para trabajos por lotes masivos donde la latencia no es crítica, aunque con un modelo de programación más rígido que Spark.
+- **Dask:** Biblioteca de Python para computación paralela distribuida que se integra bien con pandas y permite escalar desde un solo equipo hasta un clúster completo. Requeriría pocos cambios en el código existente para pasar de `multiprocessing` a Dask.
+
+### Diferencia con un clúster real
+
+Es importante distinguir que la implementación actual es una **simulación en un solo equipo con `multiprocessing`**. En un clúster distribuido real:
+
+1. Los workers residirían en máquinas diferentes, introduciendo latencia de red en los tiempos de transferencia y consolidación que no están presentes en esta simulación.
+2. La comunicación usaría protocolos de red (RPC, sockets) en lugar de serialización en memoria (pickle), haciendo que los costos de transferencia sean sustancialmente mayores.
+3. El particionamiento de datos tendría que considerar la ubicación física de los datos (datos cercanos se procesan en el mismo nodo para reducir transferencia).
+4. Los frameworks como Spark añaden capas de abstracción para gestionar la distribución, fallos y shuffle de datos que hoy deben implementarse manualmente.
+
+Las mejoras mencionadas (almacenamiento distribuido, balanceo de carga, tolerancia a fallos) son inherentes a herramientas como Spark y Hadoop, y no están implementadas en la simulación local actual, pero representan el camino natural para escalar el procesamiento a millones de registros.
+## Fase 6: Conclusiones
+### Conclusión 2: `multiprocessing` simula paralelismo en un solo equipo, no un clúster distribuido real
+### Conclusión 3: La tolerancia a fallos no está implementada y es esencial para procesamientos a gran escala
+### Conclusión 4: Los costos de coordinación y consolidación marcan el comportamiento del speedup
+### Conclusión 5: Los límites de escalabilidad identificados orientan futuras mejoras
+
+Los resultados del proyecto identifican límites claros de escalabilidad que, si se superan, permitirían procesar millones de registros de manera efectiva:
+
+1. **Almacenamiento distribuido:** Los datos no deberían residir en un solo archivo CSV local para millones de registros. Utilizar HDFS o almacenamiento en columnas (Parquet) permitiría que cada worker lea solo la partición que le corresponde, reduciendo el I/O y eliminando el cuello de botella de un único punto de lectura.
+
+2. **Balanceo de carga dinámico:** La partición actual usa reparto cíclico (`df.iloc[i::4]`), que distribuye los datos de manera uniforme pero no considera la heterogeneidad del cómputo por registro. Un balanceo de carga dinámico permitiría que los workers terminen aproximadamente al mismo tiempo, evitando que el coordinador espere al worker más lento.
+
+3. **Herramientas especializadas:** Pasar de `multiprocessing` a Apache Spark, Hadoop MapReduce o Dask proporcionaría tolerancia a fallos nativa, particionamiento automático de datos y ejecución en múltiples nodos de un clúster. La API en Python de Spark (PySpark) sería el camino natural para escalar el código actual con mínimos cambios estructurales.
+
+4. **Procesamiento por lotes (batching):** Dividir el dataset en lotes más pequeños que los workers puedan procesar de forma incremental permitiría un mejor aprovechamiento de los 16 núcleos lógicos y reduciría el tiempo de espera del coordinador.
+
+Estas mejoras no serían necesarias para los volúmenes probados (10k, 100k, 500k) en el entorno actual, pero se vuelven esenciales al escalar órdenes de magnitud más, tal como indican las conclusiones sobre la relación entre tamaño del dataset y viabilidad del paralelismo.
+
+**Evidencia:** Las discusiones en `ANALISIS_FASE5.md` (Pregunta 5) y las limitaciones identificadas en las respuestas anteriores fundamentan estas orientaciones de mejora, siempre basadas en los datos reales obtenidos y reconociendo las restricciones del entorno actual.
+
+Las mediciones revelan explícitamente cómo los costos de coordinación impactan el performance general. El tiempo de particionamiento creció sublinealmente de 0.064 s (10,000 registros) a 0.5678 s (100,000) a 1.8278 s (500,000), mientras que la transferencia (serialización pickle) creció de 0.0074 s a 0.0915 s a 0.4541 s. El tiempo de consolidación, aunque pequeño para los volúmenes menores (0.0001 s), creció a 2.3070 s para 500,000 registros, volviéndose no trivial.
+
+El speedup observado sigue este patrón: 0.38x para 10k (donde overhead domina), 2.90x para 100k (donde cómputo en workers supera overhead), y estimación de 6.77x para 500k (aunque con la limitación de la extrapolación secuencial). La consolidación, al ser tan rápida en el entorno de un solo equipo, no fue cuellos de botella, pero en un clúster distribuido real con datos dispersos, esta etapa podría volverse limitante y requeriría optimizaciones como combiners o commutators (patrón propio de MapReduce).
+
+**Evidencia:** `resultados_fase4/tabla_rendimiento.csv` proporciona los tiempos desglosados por etapa (particionamiento, transferencia, workers, consolidación) para los tres volúmenes, permitiendo este análisis detallado de dónde reside la ganancia (o pérdida) de performance.
+
+El proyecto actual no incluye mecanismos de tolerancia a fallos. Si uno de los 4 workers fallara antes de entregar sus resultados, las consecuencias serían la pérdida de los resultados parciales de esa partición y un resultado global incompleto o incorrecto. No existiría validación posible sin reejecutar todo el proceso. En el framework `multiprocessing` tal como está implementado, no hay manejo integrado de fallos: si un proceso crashea, la excepción es no capturada y se pierde esa partición.
+
+Para escalar a millones de registros, la tolerancia a fallos se vuelve crítica. La probabilidad de que algún proceso falle durante una ejecución prolongada aumenta con el tiempo y el volumen de datos. Los mecanismos que permitirían mejorar esta situación incluyen:
+
+- **Reintentos (retries):** Al detectar que un worker no responde dentro de un tiempo límite, reenviar la tarea partición en particular. Se podría wrapper la función `procesar_particion` para capturar excepciones y reintentarlas automáticamente.
+- **Checkpoints (puntos de control):** Durante el procesamiento, guardar los resultados parciales en disco (o en memoria intermedia) periódicamente. Si falla un worker, la ejecución podría reanudarse desde el último checkpoint en lugar de comenzar desde cero. Esto es especialmente importante para datasets grandes donde el tiempo de re-cómputo sería significativo.
+- **Recuperación de tareas:** Al reejecutar el proceso, distribuir nuevamente las particiones entre los workers restantes y cualquier worker reingresante, asegurando que cada partición tenga un worker disponible. Se podría implementar un mecanismo de "marcación" de particiones completadas para evitarlas en reintentos futuros.
+
+Estos mecanismos son inherentes a frameworks de procesamiento distribuido real como Apache Spark, que incluye recuperación de fallos nativa: si una task falla, Spark la reintenta automáticamente en otro executor, y los resultados parciales se acumulan en un checkpoint maestro.
+
+**Evidencia:** El análisis de la Pregunta 4 en `ANALISIS_FASE5.md` describe estos mecanismos teóricamente, y el estado actual del código confirma que no hay implementación de retry, checkpoint o recovery. El resultado devalidación `resultados_identicos` para 500,000 registros aparece como "No validado" precisamente por esta limitación.
+
+Es fundamental distinguir que la implementación del proyecto utiliza `multiprocessing` de Python para simular nodos independientes en un solo equipo con 16 núcleos lógicos. Este modelo paraleliza tareas mediante procesos del sistema operativo en la misma máquina, compartiendo memoria limitada y comunicándose mediante serialización en memoria (pickle). En un clúster distribuido real, los workers residirían en máquinas diferentes, la comunicación ocurriría mediante protocolos de red (RPC, sockets) y los costos de transferencia serían sustancialmente mayores por la latencia de red.
+
+Los resultados obtenidos reflejan este escenario de "un solo equipo": los tiempos de transferencia (0.0074 s para 10k, 0.0915 s para 100k, 0.4541 s para 500k) miden serialización/deserialización en memoria, no tráfico de red. La consolidación de resultados ocurrió al instante (0.0001 s) porque todos los procesos residían en el mismo espacio de memoria. En un clúster real, los tiempos de red para reunir los resultados parciales habrían añadido retrasos significativos que no están presentes en estas mediciones.
+
+**Evidencia:** La propia metodología del proyecto (`fase4_pruebas_rendimiento.py`) importa funciones de `fase3_procesamiento_distribuido.py` dentro del mismo proceso Python. El archivo `entorno_pruebas.json` documenta las 16 núcleos lógicos disponibles en un solo equipo. Ningún dato sugiere un entorno de múltiples nodos.
+
+A continuación se presentan las conclusiones principales del proyecto, basadas en los resultados reales obtenidos en las Fases 3, 4 y 5:
+
+### Conclusión 1: El tamaño del dataset determina la viabilidad del procesamiento paralelo
+
+El análisis demuestra que el procesamiento paralelo con `multiprocessing` no es beneficioso por sí mismo; su efectividad depende críticamente del volumen de datos a procesar. Para 10,000 registros, el tiempo de procesamiento paralelo fue de 1.4881 s frente a 0.5684 s del secuencial, resultando en un speedup de 0.38x. Este resultado indica que la sobrecarga de coordinación —particionamiento (0.064 s), transferencia/pickle (0.0074 s) y coordinación de workers (1.4165 s)— superó ampliamente el beneficio del cómputo paralelo en volúmenes pequeños. Los datos confirman que el 95%+ del tiempo paralelo fue overhead, no cómputo.
+
+Para 100,000 registros, el escenario cambió sustancialmente: el secuencial requirió 6.2098 s y el paralelo 2.1414 s, logrando un speedup de 2.90x. Aquí el tamaño del dataset fue el factor decisivo: el tiempo de cómputo en los workers comenzó a dominar sobre la sobrecarga de coordinación. Para 500,000 registros, el tiempo paralelo medido fue de 4.5890 s, con una estimación secuencial de 31.0490 s (extrapolado), lo que sugeriría un speedup de 6.77x, aunque esta cifra debe interpretarse con cautela al no haber validado directamente el resultado secuencial.
+
+**Evidencia:** `resultados_fase4/tabla_rendimiento.csv` muestra los tiempos reales para los tres volúmenes, y `entorno_pruebas.json` confirma el hardware (Windows 10, 16 núcleos lógicos, Python 3.11.9).
