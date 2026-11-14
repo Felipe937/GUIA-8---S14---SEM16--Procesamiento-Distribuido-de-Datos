@@ -494,3 +494,85 @@ El análisis demuestra que el procesamiento paralelo con `multiprocessing` no es
 Para 100,000 registros, el escenario cambió sustancialmente: el secuencial requirió 6.2098 s y el paralelo 2.1414 s, logrando un speedup de 2.90x. Aquí el tamaño del dataset fue el factor decisivo: el tiempo de cómputo en los workers comenzó a dominar sobre la sobrecarga de coordinación. Para 500,000 registros, el tiempo paralelo medido fue de 4.5890 s, con una estimación secuencial de 31.0490 s (extrapolado), lo que sugeriría un speedup de 6.77x, aunque esta cifra debe interpretarse con cautela al no haber validado directamente el resultado secuencial.
 
 **Evidencia:** `resultados_fase4/tabla_rendimiento.csv` muestra los tiempos reales para los tres volúmenes, y `entorno_pruebas.json` confirma el hardware (Windows 10, 16 núcleos lógicos, Python 3.11.9).
+## 8. Procedimientos y metodología
+
+Desarrollo de la actividad mediante aprendizaje basado en proyectos y enfoque incremental:
+
+1. **Análisis**: identificación del problema y definición de requerimientos.
+   - Relacionado con `fase1_preparacion_datos.py`, `requeriments.txt`, y los archivos `data/ventas_pequeno.csv` y `data/ventas_grande.csv`. Se definieron los requerimientos de procesamiento de datasets con columnas de región, categoría, cantidad, total_venta y fecha, y se estableció la validación de resultados idénticos entre ejecución secuencial y paralela.
+
+2. **Diseño**: representación de la arquitectura y selección de herramientas.
+   - Relacionado con `fase2_generar_diagrama.py`, `fase3_procesamiento_distribuido.py`, y `resultados_fase4/entorno_pruebas.json`. Se diseñó la arquitectura con coordinador y 4 workers usando `multiprocessing`, aclarando que este enfoque simula el procesamiento distribuido en un solo equipo y no representa un clúster distribuido real.
+
+3. **Implementación**: procesamiento de datos y consolidación de resultados.
+   - Relacionado con `fase3_procesamiento_distribuido.py`, `fase4_pruebas_rendimiento.py`, y `fase1_preparacion_datos.py`. Se implementó el procesamiento distribuido y se ejecutaron pruebas con los volúmenes 10,000, 100,000 y 500,000 registros.
+
+4. **Experimentación**: pruebas con distintos volúmenes de datos.
+   - Relacionado con `resultados_fase4/tabla_rendimiento.csv`, `resultados_fase4/comparativa_rendimiento.png`, y `resultados_fase4/entorno_pruebas.json`. Se ejecutaron pruebas con tres volúmenes de datos, observando speedup de 0.38x para 10,000 registros, 2.90x para 100,000, y speedup estimado de 6.77x para 500,000 (con la limitación de que el tiempo secuencial es una extrapolación y la validación aparece como falsa).
+
+5. **Evaluación**: comparación de tiempos, validación de resultados y análisis de limitaciones.
+   - Relacionado con `ANALISIS_FASE5.md`, `CONCLUSIONES_FASE6.md`, y `resultados_fase4/tabla_rendimiento.csv`. Se compararon tiempos, validaron resultados para 10,000 y 100,000 (correcto), y para 500,000 la validación aparece como falsa por límite de tiempo. Se analizó la overhead de coordinación, el paralelismo fijo en 4 workers, y la comunicación en un solo nodo vs clúster real.
+
+6. **Documentación**: registro de evidencias, conclusiones y referencias.
+   - Relacionado con `METODOLOGIA.md` (nuevo archivo), `ANALISIS_FASE5.md`, y `CONCLUSIONES_FASE6.md`. Se_documentó todo el proceso, relaciones entre etapas, y se estableció una distribución propuesta de responsabilidades entre Felipe Andrés Vargas, Juan Cabral y Jair Polo.
+
+### Distribución propuesta de responsabilidades
+
+| Miembro | Responsabilidades | Archivos y evidencias asociadas |
+|---------|------------------|--------------------------------|
+| **Felipe Andrés Vargas** | Preparación de datos y arquitectura | - `fase1_preparacion_datos.py`: Preparación y generación de datasets.
+- `fase2_generar_diagrama.py`: Definición de la arquitectura y diagramación Mermaid.
+- `resultados_fase4/entorno_pruebas.json`: Registro automático de características del hardware. |
+| **Juan Cabral** | Implementación y experimentación | - `fase3_procesamiento_distribuido.py`: Implementación del procesamiento distribuido con multiprocessing.
+- `fase4_pruebas_rendimiento.py`: Ejecución de pruebas con distintos volúmenes y medición de tiempos.
+- `resultados_fase4/tabla_rendimiento.csv`: Generación y compilación de los datos de rendimiento. |
+| **Jair Polo** | Evaluación y documentación | - `ANALISIS_FASE5.md`: Análisis de los 5 cuestionarios de resultados.
+- `CONCLUSIONES_FASE6.md`: Redacción de conclusiones del proyecto.
+- README.md: Documentación de las secciones Fase 5 y Fase 6, y relación con evidencias. |
+
+**Nota organizativa**: Esta distribución refleja cómo se asignaron las tareas durante el desarrollo del proyecto, basándose en las fortalezas y áreas de cada integrante. Todas las responsabilidades están respaldadas por la existencia y modificación de los archivos mencionados en el repositorio, y el historial de commits refleja la contribución de cada integrante al proyecto conjunto.
+
+---
+Enlace al documento detallado: [METODOLOGIA.md](METODOLOGIA.md)
+Enlace al documento de contribuciones: [CONTRIBUCIONES.md](CONTRIBUCIONES.md)
+Enlace al documento técnico: [DOCUMENTO_TECNICO.md](DOCUMENTO_TECNICO.md)
+## 8. Procedimientos y metodología
+
+Desarrollo de la actividad mediante aprendizaje basado en proyectos y enfoque incremental:
+
+1. **Análisis**: identificación del problema y definición de requerimientos.
+   - Relacionado con `fase1_preparacion_datos.py`, `requeriments.txt`, y los archivos `data/ventas_pequeno.csv` y `data/ventas_grande.csv`. Se definieron los requerimientos de procesamiento de datasets con columnas de región, categoría, cantidad, total_venta y fecha, y se estableció la validación de resultados idénticos entre ejecución secuencial y paralela.
+
+2. **Diseño**: representación de la arquitectura y selección de herramientas.
+   - Relacionado con `fase2_generar_diagrama.py`, `fase3_procesamiento_distribuido.py`, y `resultados_fase4/entorno_pruebas.json`. Se diseñó la arquitectura con coordinador y 4 workers usando `multiprocessing`, aclarando que este enfoque simula el procesamiento distribuido en un solo equipo y no representa un clúster distribuido real.
+
+3. **Implementación**: procesamiento de datos y consolidación de resultados.
+   - Relacionado con `fase3_procesamiento_distribuido.py`, `fase4_pruebas_rendimiento.py`, y `fase1_preparacion_datos.py`. Se implementó el procesamiento distribuido y se ejecutaron pruebas con los volúmenes 10,000, 100,000 y 500,000 registros.
+
+4. **Experimentación**: pruebas con distintos volúmenes de datos.
+   - Relacionado con `resultados_fase4/tabla_rendimiento.csv`, `resultados_fase4/comparativa_rendimiento.png`, y `resultados_fase4/entorno_pruebas.json`. Se ejecutaron pruebas con tres volúmenes de datos, observando speedup de 0.38x para 10,000 registros, 2.90x para 100,000, y speedup estimado de 6.77x para 500,000 (con la limitación de que el tiempo secuencial es una extrapolación y la validación aparece como falsa).
+
+5. **Evaluación**: comparación de tiempos, validación de resultados y análisis de limitaciones.
+   - Relacionado con `ANALISIS_FASE5.md`, `CONCLUSIONES_FASE6.md`, y `resultados_fase4/tabla_rendimiento.csv`. Se compararon tiempos, validaron resultados para 10,000 y 100,000 (correcto), y para 500,000 la validación aparece como falsa por límite de tiempo. Se analizó la overhead de coordinación, el paralelismo fijo en 4 workers, y la comunicación en un solo nodo vs clúster real.
+
+6. **Documentación**: registro de evidencias, conclusiones y referencias.
+   - Relacionado con `METODOLOGIA.md` (nuevo archivo), `ANALISIS_FASE5.md`, y `CONCLUSIONES_FASE6.md`. Se_documentó todo el proceso, relaciones entre etapas, y se estableció una distribución propuesta de responsabilidades entre Felipe Andrés Vargas, Juan Cabral y Jair Polo.
+
+### Distribución propuesta de responsabilidades
+
+| Miembro | Responsabilidades | Archivos y evidencias asociadas |
+|---------|------------------|--------------------------------|
+| **Felipe Andrés Vargas** | Preparación de datos y arquitectura | - `fase1_preparacion_datos.py`: Preparación y generación de datasets.
+- `fase2_generar_diagrama.py`: Definición de la arquitectura y diagramación Mermaid.
+- `resultados_fase4/entorno_pruebas.json`: Registro automático de características del hardware. |
+| **Juan Cabral** | Implementación y experimentación | - `fase3_procesamiento_distribuido.py`: Implementación del procesamiento distribuido con multiprocessing.
+- `fase4_pruebas_rendimiento.py`: Ejecución de pruebas con distintos volúmenes y medición de tiempos.
+- `resultados_fase4/tabla_rendimiento.csv`: Generación y compilación de los datos de rendimiento. |
+| **Jair Polo** | Evaluación y documentación | - `ANALISIS_FASE5.md`: Análisis de los 5 cuestionarios de resultados.
+- `CONCLUSIONES_FASE6.md`: Redacción de conclusiones del proyecto.
+- README.md: Documentación de las secciones Fase 5 y Fase 6, y relación con evidencias. |
+
+**Nota organizativa**: Esta distribución refleja cómo se asignaron las tareas durante el desarrollo del proyecto, basándose en las fortalezas y áreas de cada integrante. Todas las responsabilidades están respaldadas por la existencia y modificación de los archivos mencionados en el repositorio, y el historial de commits refleja la contribución de cada integrante al proyecto conjunto.
+
+---
+Enlace al documento detallado: [METODOLOGIA.md](METODOLOGIA.md)
